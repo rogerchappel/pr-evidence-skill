@@ -1,0 +1,20 @@
+{
+  "summary": [
+    "Adds deterministic evidence collection for release-candidate PRs.",
+    "Keeps GitHub writes out of V1."
+  ],
+  "risks": [
+    "Command outputs are summarized by the caller and should be kept concise.",
+    "Package content evidence depends on caller-supplied notes in V1."
+  ],
+  "nextSteps": [
+    "Paste rendered Markdown into the PR body.",
+    "Attach full logs only when repository policy allows it."
+  ],
+  "packageContents": [
+    "src/cli.js",
+    "src/evidence.js",
+    "SKILL.md",
+    "docs/PRD.md"
+  ]
+}

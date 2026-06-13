@@ -1,0 +1,14 @@
+[
+  {
+    "command": "npm test",
+    "exitCode": 0,
+    "durationMs": 742,
+    "summary": "All fixture-backed tests passed."
+  },
+  {
+    "command": "npm run smoke",
+    "exitCode": 0,
+    "durationMs": 318,
+    "summary": "Rendered Markdown evidence pack from fixture."
+  }
+]

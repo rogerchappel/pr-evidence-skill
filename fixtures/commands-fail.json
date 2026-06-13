@@ -1,0 +1,8 @@
+[
+  {
+    "command": "npm test",
+    "exitCode": 1,
+    "durationMs": 515,
+    "summary": "Renderer test failed after changed heading."
+  }
+]

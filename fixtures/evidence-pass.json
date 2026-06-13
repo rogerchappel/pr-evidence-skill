@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-06-13T22:31:00.000Z",
+  "git": {
+    "branch": "release-candidate/pr-evidence-skill",
+    "head": "abc123",
+    "base": "main",
+    "dirty": false,
+    "commits": ["abc123 add evidence renderer", "def456 add CLI"],
+    "changedFiles": ["src/render.js", "src/cli.js", "SKILL.md"]
+  },
+  "commands": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "durationMs": 742,
+      "summary": "All fixture-backed tests passed."
+    }
+  ],
+  "summary": ["Builds a local PR evidence packer for agent-authored PRs."],
+  "risks": ["Does not replace CI or inspect remote GitHub state."],
+  "nextSteps": ["Open or update the release-candidate PR with the rendered body."],
+  "packageContents": ["src", "fixtures", "docs", "SKILL.md"]
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "git": {
+    "branch": "release-candidate/pr-evidence-skill",
+    "head": "abc123",
+    "base": "main",
+    "dirty": true,
+    "commits": [],
+    "changedFiles": []
+  },
+  "commands": [],
+  "summary": [],
+  "risks": [],
+  "nextSteps": [],
+  "packageContents": []
+}

@@ -1,0 +1,6 @@
+node_modules/
+coverage/
+dist/
+*.log
+evidence.json
+pr-body.md

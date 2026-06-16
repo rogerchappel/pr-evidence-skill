@@ -58,3 +58,15 @@ node src/cli.js collect \
 - Package contents are caller-supplied in V1.
 - Full command logs are intentionally not embedded by default.
 - Remote PR state is out of scope.
+
+## Verification
+
+```bash
+npm run check
+npm test
+npm run smoke
+npm run package:smoke
+npm run release:check
+```
+
+Use `npm run release:check` before publishing or opening a release PR.

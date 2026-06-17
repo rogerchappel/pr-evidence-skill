@@ -29,7 +29,11 @@
     "fixtures",
     "docs",
     "SKILL.md",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",

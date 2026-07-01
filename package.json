@@ -11,7 +11,7 @@
     "check": "node --check src/*.js test/*.test.js",
     "smoke": "node src/cli.js render fixtures/evidence-pass.json --format markdown",
     "fixture:collect": "node src/cli.js collect --commands fixtures/commands-pass.json --notes fixtures/notes.json --out /tmp/pr-evidence.json",
-    "package:smoke": "npm pack --dry-run",
+    "package:smoke": "node scripts/package-smoke.mjs",
     "release:check": "npm run check && npm test && npm run smoke && npm run package:smoke"
   },
   "keywords": [
@@ -26,6 +26,7 @@
   },
   "files": [
     "src",
+    "scripts",
     "fixtures",
     "docs",
     "SKILL.md",

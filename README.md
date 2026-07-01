@@ -18,6 +18,13 @@ Render fixture evidence:
 node src/cli.js render fixtures/evidence-pass.json --format markdown
 ```
 
+Check the installed command surface:
+
+```bash
+node src/cli.js --help
+node src/cli.js --version
+```
+
 Check required evidence:
 
 ```bash
@@ -70,3 +77,5 @@ npm run release:check
 ```
 
 Use `npm run release:check` before publishing or opening a release PR.
+`npm run package:smoke` verifies the dry-run tarball includes the CLI, source
+modules, fixtures, docs, policies, and executable bin metadata.

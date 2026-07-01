@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { writeFile } from "node:fs/promises";
 import { checkEvidence, collectEvidence, readJson } from "./evidence.js";
 import { renderJson, renderMarkdown } from "./render.js";
@@ -6,7 +7,8 @@ import { renderJson, renderMarkdown } from "./render.js";
 async function main(argv) {
   const [command, ...rest] = argv;
   const args = parseArgs(rest);
-  if (!command || args.help) return usage();
+  if (!command || command === "--help" || command === "-h" || args.help) return usage();
+  if (command === "--version" || command === "-v") return version();
 
   if (command === "collect") {
     const evidence = await collectEvidence({
@@ -73,6 +75,13 @@ Commands:
   render evidence.json [--format markdown|json] [--out pr-body.md]
   check evidence.json [--require verification,risks,summary]
 `);
+}
+
+async function version() {
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8")
+  );
+  process.stdout.write(`${packageJson.version}\n`);
 }
 
 main(process.argv.slice(2)).catch((error) => {

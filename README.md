@@ -53,6 +53,11 @@ node src/cli.js collect \
 ]
 ```
 
+Every command result must include an explicit `exitCode` as a finite integer.
+Use `0` for a successful command and a nonzero integer for a failed command.
+The legacy `code` field is also accepted, but missing, `null`, string, fractional,
+`NaN`, and infinite status values are rejected rather than treated as success.
+
 ## Safety Notes
 
 - Default commands are local only.

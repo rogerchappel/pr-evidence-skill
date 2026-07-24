@@ -62,9 +62,13 @@ export function checkEvidence(evidence, requirements = ["verification", "risks"]
 }
 
 function normalizeCommand(command) {
+  const status = Object.hasOwn(command, "exitCode")
+    ? command.exitCode
+    : command.code;
+
   return {
     command: command.command,
-    exitCode: Number(command.exitCode ?? command.code ?? 0),
+    exitCode: Number.isFinite(status) && Number.isInteger(status) ? status : null,
     durationMs: command.durationMs ?? null,
     summary: command.summary ?? "",
     stdoutTail: command.stdoutTail ?? "",

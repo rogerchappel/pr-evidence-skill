@@ -14,6 +14,11 @@ format and uses semantic versioning when versioned releases are published.
 - Local-only safety guidance for keeping command summaries and reviewer notes
   free of secrets.
 
+### Changed
+
+- Reject unsupported CLI commands, options, render formats, and missing option
+  values instead of silently accepting them.
+
 ## Release Links
 
 - Unreleased:

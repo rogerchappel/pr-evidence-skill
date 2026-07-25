@@ -40,6 +40,12 @@ node src/cli.js collect \
   --out evidence.json
 ```
 
+The CLI accepts the `collect`, `render`, and `check` commands shown by
+`--help`. Options require a value, `render --format` accepts only `markdown`
+or `json`, and unsupported commands or options exit nonzero with an error.
+Use `collect --cwd path` to collect repository metadata from another working
+directory.
+
 ## Command Result Format
 
 ```json

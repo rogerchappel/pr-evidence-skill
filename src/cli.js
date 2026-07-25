@@ -94,7 +94,7 @@ function usage() {
   process.stdout.write(`pr-evidence
 
 Commands:
-  collect --commands commands.json [--notes notes.json] [--base main] [--out evidence.json]
+  collect --commands commands.json [--notes notes.json] [--base main] [--cwd path] [--out evidence.json]
   render evidence.json [--format markdown|json] [--out pr-body.md]
   check evidence.json [--require verification,risks,summary]
 `);

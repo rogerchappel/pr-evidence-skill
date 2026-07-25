@@ -6,13 +6,16 @@ import { renderJson, renderMarkdown } from "./render.js";
 
 async function main(argv) {
   const [command, ...rest] = argv;
-  const args = parseArgs(rest);
-  if (!command || command === "--help" || command === "-h" || args.help) return usage();
+  if (!command || command === "--help" || command === "-h") return usage();
   if (command === "--version" || command === "-v") return version();
+  if (!COMMANDS[command]) throw new Error(`Unknown command: ${command}`);
+
+  const args = parseArgs(command, rest);
+  if (args.help) return usage();
 
   if (command === "collect") {
     const evidence = await collectEvidence({
-      commands: args.commands,
+      commands: required(args, "commands"),
       notes: args.notes,
       base: args.base,
       cwd: args.cwd
@@ -22,7 +25,11 @@ async function main(argv) {
 
   if (command === "render") {
     const evidence = await readJson(required(args, "_0"));
-    const rendered = args.format === "json" ? renderJson(evidence) : renderMarkdown(evidence);
+    const format = args.format ?? "markdown";
+    if (!["markdown", "json"].includes(format)) {
+      throw new Error(`Invalid --format "${format}"; expected markdown or json`);
+    }
+    const rendered = format === "json" ? renderJson(evidence) : renderMarkdown(evidence);
     return output(args, rendered);
   }
 
@@ -34,11 +41,16 @@ async function main(argv) {
     if (!result.ok) process.exitCode = 1;
     return;
   }
-
-  throw new Error(`Unknown command: ${command}`);
 }
 
-function parseArgs(values) {
+const COMMANDS = {
+  collect: { options: ["commands", "notes", "base", "cwd", "out"], positionals: 0 },
+  render: { options: ["format", "out"], positionals: 1 },
+  check: { options: ["require"], positionals: 1 }
+};
+
+function parseArgs(command, values) {
+  const schema = COMMANDS[command];
   const args = { _: [] };
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index];
@@ -46,13 +58,24 @@ function parseArgs(values) {
       const key = value.slice(2);
       if (key === "help") args.help = true;
       else {
+        if (!schema.options.includes(key)) {
+          throw new Error(`Unknown option for ${command}: --${key}`);
+        }
+        if (values[index + 1] === undefined || values[index + 1].startsWith("--")) {
+          throw new Error(`Missing value for --${key}`);
+        }
         args[key] = values[index + 1];
         index += 1;
       }
+    } else if (value.startsWith("-")) {
+      throw new Error(`Unknown option for ${command}: ${value}`);
     } else {
       args._.push(value);
       args[`_${args._.length - 1}`] = value;
     }
+  }
+  if (args._.length > schema.positionals) {
+    throw new Error(`Unexpected argument for ${command}: ${args._[schema.positionals]}`);
   }
   return args;
 }
@@ -71,7 +94,7 @@ function usage() {
   process.stdout.write(`pr-evidence
 
 Commands:
-  collect --commands commands.json [--notes notes.json] [--base main] [--out evidence.json]
+  collect --commands commands.json [--notes notes.json] [--base main] [--cwd path] [--out evidence.json]
   render evidence.json [--format markdown|json] [--out pr-body.md]
   check evidence.json [--require verification,risks,summary]
 `);

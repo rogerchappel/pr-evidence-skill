@@ -79,3 +79,47 @@ test("CLI prints package version", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), pkg.version);
 });
+
+test("CLI renders each documented format", () => {
+  const markdown = runCli("render", "fixtures/evidence-pass.json", "--format", "markdown");
+  assert.equal(markdown.status, 0, markdown.stderr);
+  assert.match(markdown.stdout, /^# PR Evidence Pack/m);
+
+  const json = runCli("render", "fixtures/evidence-pass.json", "--format", "json");
+  assert.equal(json.status, 0, json.stderr);
+  assert.doesNotThrow(() => JSON.parse(json.stdout));
+});
+
+test("CLI rejects unsupported formats", () => {
+  const result = runCli("render", "fixtures/evidence-pass.json", "--format", "yaml");
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /Invalid --format "yaml"; expected markdown or json/);
+});
+
+test("CLI rejects unknown options", () => {
+  const result = runCli("render", "fixtures/evidence-pass.json", "--bogus", "value");
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /Unknown option for render: --bogus/);
+});
+
+test("CLI rejects missing option values", () => {
+  for (const values of [
+    ["render", "fixtures/evidence-pass.json", "--format"],
+    ["render", "fixtures/evidence-pass.json", "--format", "--out", "result.md"]
+  ]) {
+    const result = runCli(...values);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Missing value for --format/);
+  }
+});
+
+function runCli(...args) {
+  return spawnSync(process.execPath, ["src/cli.js", ...args], {
+    encoding: "utf8"
+  });
+}

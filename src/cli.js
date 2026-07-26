@@ -99,6 +99,9 @@ Commands:
   collect --commands commands.json [--notes notes.json] [--base main] [--cwd path] [--out evidence.json]
   render evidence.json [--format markdown|json] [--out pr-body.md]
   check evidence.json [--require verification,risks,summary]
+
+Evidence requirements: verification, risks, summary
+Verification commands require a non-empty command string and integer exitCode (or legacy code).
 `);
 }
 

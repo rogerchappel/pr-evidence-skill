@@ -35,7 +35,9 @@ async function main(argv) {
 
   if (command === "check") {
     const evidence = await readJson(required(args, "_0"));
-    const requirements = args.require ? args.require.split(",").map((item) => item.trim()) : undefined;
+    const requirements = Object.hasOwn(args, "require")
+      ? args.require.split(",").map((item) => item.trim())
+      : undefined;
     const result = checkEvidence(evidence, requirements);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (!result.ok) process.exitCode = 1;
@@ -97,6 +99,9 @@ Commands:
   collect --commands commands.json [--notes notes.json] [--base main] [--cwd path] [--out evidence.json]
   render evidence.json [--format markdown|json] [--out pr-body.md]
   check evidence.json [--require verification,risks,summary]
+
+Evidence requirements: verification, risks, summary
+Verification commands require a non-empty command string and integer exitCode (or legacy code).
 `);
 }
 

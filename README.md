@@ -46,6 +46,10 @@ or `json`, and unsupported commands or options exit nonzero with an error.
 Use `collect --cwd path` to collect repository metadata from another working
 directory.
 
+`check --require` accepts only `verification`, `risks`, and `summary` as a
+comma-separated list. Unknown or empty names are rejected instead of silently
+disabling checks.
+
 ## Command Result Format
 
 ```json
@@ -59,10 +63,11 @@ directory.
 ]
 ```
 
-Every command result must include an explicit `exitCode` as a finite integer.
-Use `0` for a successful command and a nonzero integer for a failed command.
-The legacy `code` field is also accepted, but missing, `null`, string, fractional,
-`NaN`, and infinite status values are rejected rather than treated as success.
+Every command result must include a non-empty string `command` and an explicit
+`exitCode` as a finite integer. Use `0` for a successful command and a nonzero
+integer for a failed command. The legacy `code` field is also accepted, but
+missing, `null`, string, fractional, `NaN`, and infinite status values are
+rejected rather than treated as success.
 
 ## Safety Notes
 

@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { collectGitEvidence } from "./git.js";
 
+export const EVIDENCE_REQUIREMENTS = ["verification", "risks", "summary"];
+
 export async function readJson(filePath) {
   const raw = await readFile(filePath, "utf8");
   try {
@@ -41,9 +43,17 @@ export function normalizeEvidence(evidence) {
 
 export function checkEvidence(evidence, requirements = ["verification", "risks"]) {
   const normalized = normalizeEvidence(evidence);
-  const findings = [];
+  const findings = validateRequirements(requirements);
   if (requirements.includes("verification") && normalized.commands.length === 0) {
     findings.push("Missing verification commands");
+  }
+  if (
+    requirements.includes("verification")
+    && normalized.commands.some(
+      (command) => typeof command.command !== "string" || command.command.trim().length === 0
+    )
+  ) {
+    findings.push("One or more verification commands is missing a non-empty command name");
   }
   if (requirements.includes("verification") && normalized.commands.some((command) => command.exitCode !== 0)) {
     findings.push("One or more verification commands failed");
@@ -59,6 +69,19 @@ export function checkEvidence(evidence, requirements = ["verification", "risks"]
     ok: findings.length === 0,
     findings
   };
+}
+
+function validateRequirements(requirements) {
+  const expected = EVIDENCE_REQUIREMENTS.join(", ").replace(/, ([^,]+)$/, ", or $1");
+  return requirements.flatMap((requirement) => {
+    if (requirement === "") {
+      return [`Evidence requirements must not be empty; expected ${expected}`];
+    }
+    if (!EVIDENCE_REQUIREMENTS.includes(requirement)) {
+      return [`Unknown evidence requirement "${requirement}"; expected ${expected}`];
+    }
+    return [];
+  });
 }
 
 function normalizeCommand(command) {

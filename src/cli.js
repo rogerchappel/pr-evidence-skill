@@ -35,7 +35,9 @@ async function main(argv) {
 
   if (command === "check") {
     const evidence = await readJson(required(args, "_0"));
-    const requirements = args.require ? args.require.split(",").map((item) => item.trim()) : undefined;
+    const requirements = Object.hasOwn(args, "require")
+      ? args.require.split(",").map((item) => item.trim())
+      : undefined;
     const result = checkEvidence(evidence, requirements);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     if (!result.ok) process.exitCode = 1;

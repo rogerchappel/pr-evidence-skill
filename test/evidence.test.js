@@ -37,6 +37,35 @@ test("requires an explicit finite integer command status", () => {
   }
 });
 
+test("requires a non-empty verification command name", () => {
+  for (const command of [
+    { exitCode: 0 },
+    { command: "", exitCode: 0 },
+    { command: "   ", exitCode: 0 },
+    { command: 42, exitCode: 0 }
+  ]) {
+    const result = checkEvidence({ commands: [command], risks: ["none"] });
+    assert.equal(result.ok, false);
+    assert.match(result.findings.join(" "), /missing a non-empty command name/i);
+  }
+});
+
+test("rejects unknown and empty evidence requirements", () => {
+  const evidence = {
+    commands: [{ command: "npm test", exitCode: 0 }],
+    risks: ["none"],
+    summary: ["ready"]
+  };
+
+  assert.deepEqual(checkEvidence(evidence, ["verification", "typo"]).findings, [
+    'Unknown evidence requirement "typo"; expected verification, risks, or summary'
+  ]);
+  assert.deepEqual(checkEvidence(evidence, [""]).findings, [
+    "Evidence requirements must not be empty; expected verification, risks, or summary"
+  ]);
+  assert.equal(checkEvidence(evidence, ["verification", "risks", "summary"]).ok, true);
+});
+
 test("CLI rejects malformed and failed command statuses", () => {
   const directory = mkdtempSync(join(tmpdir(), "pr-evidence-status-"));
   const cases = [
@@ -60,6 +89,47 @@ test("CLI rejects malformed and failed command statuses", () => {
   } finally {
     rmSync(directory, { recursive: true });
   }
+});
+
+test("CLI rejects unnamed verification commands", () => {
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-command-"));
+  const evidencePath = join(directory, "unnamed.json");
+
+  try {
+    writeFileSync(evidencePath, JSON.stringify({ commands: [{ exitCode: 0 }], risks: ["none"] }));
+    const result = runCli("check", evidencePath);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /missing a non-empty command name/i);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("CLI rejects unknown, empty, and mixed invalid requirements", () => {
+  for (const value of ["typo", "", "verification,typo", "verification,"]) {
+    const result = runCli(
+      "check",
+      "fixtures/evidence-pass.json",
+      "--require",
+      value
+    );
+
+    assert.equal(result.status, 1, `${JSON.stringify(value)}: ${result.stdout || result.stderr}`);
+    assert.match(result.stdout, /expected verification, risks, or summary/);
+  }
+});
+
+test("CLI accepts every supported evidence requirement", () => {
+  const result = runCli(
+    "check",
+    "fixtures/evidence-pass.json",
+    "--require",
+    "verification,risks,summary"
+  );
+
+  assert.equal(result.status, 0, result.stdout || result.stderr);
+  assert.match(result.stdout, /"ok": true/);
 });
 
 test("renders reviewer-facing markdown", async () => {

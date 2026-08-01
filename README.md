@@ -52,6 +52,28 @@ disabling checks.
 
 ## Command Result Format
 
+Evidence JSON has a plain-object root. The five reviewer-facing collections are
+arrays; omitted collections default to empty arrays. Each reviewer-facing list
+entry must be a non-empty string, and every command entry must be a plain object:
+
+```json
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-06-13T22:31:00.000Z",
+  "git": {},
+  "commands": [],
+  "summary": ["What changed."],
+  "risks": ["Known residual risk."],
+  "nextSteps": ["Reviewer action."],
+  "packageContents": ["src/evidence.js"]
+}
+```
+
+`collect`, `check`, and `render` use the same schema validation. Malformed input
+exits nonzero with a field-specific diagnostic such as
+`Evidence field "summary" must be an array`; it is never accepted by `check`
+only to fail later during rendering.
+
 ```json
 [
   {

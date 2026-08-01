@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkEvidence, readJson } from "../src/evidence.js";
+import { checkEvidence, normalizeEvidence, readJson } from "../src/evidence.js";
 import { renderMarkdown } from "../src/render.js";
 
 test("passes complete fixture evidence", async () => {
@@ -23,17 +23,18 @@ test("flags incomplete fixture evidence", async () => {
 
 test("requires an explicit finite integer command status", () => {
   const cases = [
-    { label: "missing", command: { command: "npm test" }, ok: false },
-    { label: "null", command: { command: "npm test", exitCode: null }, ok: false },
-    { label: "non-numeric", command: { command: "npm test", exitCode: "0" }, ok: false },
+    { label: "missing", command: { command: "npm test" }, throws: true },
+    { label: "null", command: { command: "npm test", exitCode: null }, throws: true },
+    { label: "non-numeric", command: { command: "npm test", exitCode: "0" }, throws: true },
     { label: "zero", command: { command: "npm test", exitCode: 0 }, ok: true },
     { label: "nonzero", command: { command: "npm test", exitCode: 1 }, ok: false },
     { label: "legacy code", command: { command: "npm test", code: 0 }, ok: true }
   ];
 
-  for (const { label, command, ok } of cases) {
-    const result = checkEvidence({ commands: [command], risks: ["none"] });
-    assert.equal(result.ok, ok, label);
+  for (const { label, command, ok, throws } of cases) {
+    const run = () => checkEvidence({ commands: [command], risks: ["none"] });
+    if (throws) assert.throws(run, /integer exitCode/, label);
+    else assert.equal(run().ok, ok, label);
   }
 });
 
@@ -44,9 +45,10 @@ test("requires a non-empty verification command name", () => {
     { command: "   ", exitCode: 0 },
     { command: 42, exitCode: 0 }
   ]) {
-    const result = checkEvidence({ commands: [command], risks: ["none"] });
-    assert.equal(result.ok, false);
-    assert.match(result.findings.join(" "), /missing a non-empty command name/i);
+    assert.throws(
+      () => checkEvidence({ commands: [command], risks: ["none"] }),
+      /commands\[0\]\.command.*non-empty string/i
+    );
   }
 });
 
@@ -100,7 +102,7 @@ test("CLI rejects unnamed verification commands", () => {
     const result = runCli("check", evidencePath);
 
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /missing a non-empty command name/i);
+    assert.match(result.stderr, /commands\[0\]\.command.*non-empty string/i);
   } finally {
     rmSync(directory, { recursive: true });
   }
@@ -158,6 +160,63 @@ test("CLI renders each documented format", () => {
   const json = runCli("render", "fixtures/evidence-pass.json", "--format", "json");
   assert.equal(json.status, 0, json.stderr);
   assert.doesNotThrow(() => JSON.parse(json.stdout));
+});
+
+test("API rejects malformed evidence containers with field-specific diagnostics", () => {
+  const cases = [
+    { value: null, message: /root must be a plain object/ },
+    { value: [], message: /root must be a plain object/ },
+    { value: { commands: {} }, message: /"commands" must be an array/ },
+    { value: { summary: "ready" }, message: /"summary" must be an array/ },
+    { value: { commands: [null] }, message: /"commands\[0\]" must be a plain object/ },
+    { value: { risks: [null] }, message: /"risks\[0\]" must be a non-empty string/ },
+    { value: { packageContents: ["ok", {}] }, message: /"packageContents\[1\]"/ }
+  ];
+
+  for (const { value, message } of cases) {
+    assert.throws(() => normalizeEvidence(value), message);
+    assert.throws(() => checkEvidence(value), message);
+    assert.throws(() => renderMarkdown(value), message);
+  }
+});
+
+test("CLI check and render reject the same malformed evidence", () => {
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-schema-"));
+  const evidencePath = join(directory, "malformed.json");
+  try {
+    writeFileSync(evidencePath, JSON.stringify({ summary: "ready" }));
+    for (const command of ["check", "render"]) {
+      const result = runCli(command, evidencePath);
+      assert.equal(result.status, 1, `${command}: ${result.stdout || result.stderr}`);
+      assert.equal(result.stdout, "");
+      assert.match(result.stderr, /Evidence field "summary" must be an array/);
+      assert.doesNotMatch(result.stderr, /TypeError/);
+    }
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("CLI collect rejects malformed command and notes containers", () => {
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-collect-schema-"));
+  const commandsPath = join(directory, "commands.json");
+  const notesPath = join(directory, "notes.json");
+  try {
+    writeFileSync(commandsPath, JSON.stringify({ command: "npm test", exitCode: 0 }));
+    writeFileSync(notesPath, "null");
+
+    const commands = runCli("collect", "--commands", commandsPath);
+    assert.equal(commands.status, 1);
+    assert.match(commands.stderr, /Evidence field "commands" must be an array/);
+
+    writeFileSync(commandsPath, "[]");
+    const notes = runCli("collect", "--commands", commandsPath, "--notes", notesPath);
+    assert.equal(notes.status, 1);
+    assert.match(notes.stderr, /Evidence notes root must be a plain object/);
+    assert.doesNotMatch(notes.stderr, /TypeError/);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("CLI rejects unsupported formats", () => {

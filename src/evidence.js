@@ -15,6 +15,12 @@ export async function readJson(filePath) {
 export async function collectEvidence(options = {}) {
   const commands = options.commands ? await readJson(options.commands) : [];
   const notes = options.notes ? await readJson(options.notes) : {};
+  if (!Array.isArray(commands)) {
+    throw new Error('Evidence field "commands" must be an array');
+  }
+  if (!isPlainObject(notes)) {
+    throw new Error('Evidence notes root must be a plain object');
+  }
   const git = await collectGitEvidence(options.cwd ?? process.cwd(), options.base ?? "HEAD~1");
   return normalizeEvidence({
     schemaVersion: 1,
@@ -29,6 +35,7 @@ export async function collectEvidence(options = {}) {
 }
 
 export function normalizeEvidence(evidence) {
+  validateEvidence(evidence);
   return {
     schemaVersion: evidence.schemaVersion ?? 1,
     collectedAt: evidence.collectedAt ?? null,
@@ -41,19 +48,50 @@ export function normalizeEvidence(evidence) {
   };
 }
 
+export function validateEvidence(evidence) {
+  if (!isPlainObject(evidence)) {
+    throw new Error("Evidence root must be a plain object");
+  }
+
+  for (const field of ["commands", "summary", "risks", "nextSteps", "packageContents"]) {
+    if (evidence[field] !== undefined && !Array.isArray(evidence[field])) {
+      throw new Error(`Evidence field "${field}" must be an array`);
+    }
+  }
+
+  for (const [index, command] of (evidence.commands ?? []).entries()) {
+    if (!isPlainObject(command)) {
+      throw new Error(`Evidence field "commands[${index}]" must be a plain object`);
+    }
+    if (typeof command.command !== "string" || command.command.trim().length === 0) {
+      throw new Error(`Evidence field "commands[${index}].command" must be a non-empty string`);
+    }
+    const status = Object.hasOwn(command, "exitCode") ? command.exitCode : command.code;
+    if (!Number.isFinite(status) || !Number.isInteger(status)) {
+      throw new Error(`Evidence field "commands[${index}]" must include an integer exitCode (or legacy code)`);
+    }
+  }
+
+  for (const field of ["summary", "risks", "nextSteps", "packageContents"]) {
+    for (const [index, item] of (evidence[field] ?? []).entries()) {
+      if (typeof item !== "string" || item.trim().length === 0) {
+        throw new Error(`Evidence field "${field}[${index}]" must be a non-empty string`);
+      }
+    }
+  }
+}
+
+function isPlainObject(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
 export function checkEvidence(evidence, requirements = ["verification", "risks"]) {
   const normalized = normalizeEvidence(evidence);
   const findings = validateRequirements(requirements);
   if (requirements.includes("verification") && normalized.commands.length === 0) {
     findings.push("Missing verification commands");
-  }
-  if (
-    requirements.includes("verification")
-    && normalized.commands.some(
-      (command) => typeof command.command !== "string" || command.command.trim().length === 0
-    )
-  ) {
-    findings.push("One or more verification commands is missing a non-empty command name");
   }
   if (requirements.includes("verification") && normalized.commands.some((command) => command.exitCode !== 0)) {
     findings.push("One or more verification commands failed");

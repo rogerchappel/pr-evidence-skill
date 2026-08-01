@@ -44,7 +44,11 @@ The CLI accepts the `collect`, `render`, and `check` commands shown by
 `--help`. Options require a value, `render --format` accepts only `markdown`
 or `json`, and unsupported commands or options exit nonzero with an error.
 Use `collect --cwd path` to collect repository metadata from another working
-directory.
+directory. The comparison base defaults to `HEAD~1`; `--base` must resolve to a
+commit in that repository. An unresolved base or a failed commit/file
+comparison exits nonzero with a Git diagnostic and does not write the requested
+output file. A successful comparison may legitimately contain zero commits and
+zero changed files, such as when `--base HEAD` is used.
 
 `check --require` accepts only `verification`, `risks`, and `summary` as a
 comma-separated list. Unknown or empty names are rejected instead of silently

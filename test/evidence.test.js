@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkEvidence, normalizeEvidence, readJson } from "../src/evidence.js";
+import { collectGitEvidence } from "../src/git.js";
 import { renderMarkdown } from "../src/render.js";
 
 test("passes complete fixture evidence", async () => {
@@ -219,6 +220,58 @@ test("CLI collect rejects malformed command and notes containers", () => {
   }
 });
 
+test("git collection rejects an invalid base with an actionable diagnostic", async () => {
+  const repository = createGitRepository();
+  try {
+    await assert.rejects(
+      collectGitEvidence(repository, "definitely-not-a-ref"),
+      /Cannot resolve base revision "definitely-not-a-ref" to a commit/
+    );
+  } finally {
+    rmSync(repository, { recursive: true });
+  }
+});
+
+test("git collection preserves valid empty and non-empty comparisons", async () => {
+  const repository = createGitRepository();
+  try {
+    const empty = await collectGitEvidence(repository, "HEAD");
+    assert.deepEqual(empty.commits, []);
+    assert.deepEqual(empty.changedFiles, []);
+
+    writeFileSync(join(repository, "second.txt"), "second\n");
+    runGit(repository, "add", "second.txt");
+    runGit(repository, "commit", "-m", "add second file");
+
+    const nonEmpty = await collectGitEvidence(repository, "HEAD~1");
+    assert.match(nonEmpty.commits[0], /add second file/);
+    assert.deepEqual(nonEmpty.changedFiles, ["second.txt"]);
+  } finally {
+    rmSync(repository, { recursive: true });
+  }
+});
+
+test("CLI collect fails nonzero for an invalid base without writing evidence", () => {
+  const repository = createGitRepository();
+  const outputPath = join(repository, "evidence.json");
+  try {
+    const result = runCli(
+      "collect",
+      "--commands", join(process.cwd(), "fixtures/commands-pass.json"),
+      "--cwd", repository,
+      "--base", "definitely-not-a-ref",
+      "--out", outputPath
+    );
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Cannot resolve base revision "definitely-not-a-ref" to a commit/);
+    assert.throws(() => readFileSync(outputPath), /ENOENT/);
+  } finally {
+    rmSync(repository, { recursive: true });
+  }
+});
+
 test("CLI rejects unsupported formats", () => {
   const result = runCli("render", "fixtures/evidence-pass.json", "--format", "yaml");
 
@@ -251,4 +304,20 @@ function runCli(...args) {
   return spawnSync(process.execPath, ["src/cli.js", ...args], {
     encoding: "utf8"
   });
+}
+
+function createGitRepository() {
+  const repository = mkdtempSync(join(tmpdir(), "pr-evidence-git-"));
+  runGit(repository, "init", "--quiet");
+  runGit(repository, "config", "user.name", "Test Author");
+  runGit(repository, "config", "user.email", "test@example.com");
+  writeFileSync(join(repository, "first.txt"), "first\n");
+  runGit(repository, "add", "first.txt");
+  runGit(repository, "commit", "--quiet", "-m", "initial commit");
+  return repository;
+}
+
+function runGit(cwd, ...args) {
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
 }

@@ -84,7 +84,9 @@ only to fail later during rendering.
     "command": "npm test",
     "exitCode": 0,
     "durationMs": 742,
-    "summary": "All fixture-backed tests passed."
+    "summary": "All fixture-backed tests passed.",
+    "stdoutTail": "24 tests passed",
+    "stderrTail": ""
   }
 ]
 ```
@@ -93,7 +95,10 @@ Every command result must include a non-empty string `command` and an explicit
 `exitCode` as a finite integer. Use `0` for a successful command and a nonzero
 integer for a failed command. The legacy `code` field is also accepted, but
 missing, `null`, string, fractional, `NaN`, and infinite status values are
-rejected rather than treated as success.
+rejected rather than treated as success. Optional `durationMs` must be a
+non-negative finite number. Optional `summary`, `stdoutTail`, and `stderrTail`
+must be strings. When omitted, duration normalizes to `null` and the string
+fields normalize to empty strings.
 
 ## Safety Notes
 

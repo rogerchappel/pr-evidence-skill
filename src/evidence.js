@@ -70,6 +70,15 @@ export function validateEvidence(evidence) {
     if (!Number.isFinite(status) || !Number.isInteger(status)) {
       throw new Error(`Evidence field "commands[${index}]" must include an integer exitCode (or legacy code)`);
     }
+    if (Object.hasOwn(command, "durationMs")
+      && (!Number.isFinite(command.durationMs) || command.durationMs < 0)) {
+      throw new Error(`Evidence field "commands[${index}].durationMs" must be a non-negative finite number`);
+    }
+    for (const field of ["summary", "stdoutTail", "stderrTail"]) {
+      if (Object.hasOwn(command, field) && typeof command[field] !== "string") {
+        throw new Error(`Evidence field "commands[${index}].${field}" must be a string`);
+      }
+    }
   }
 
   for (const field of ["summary", "risks", "nextSteps", "packageContents"]) {

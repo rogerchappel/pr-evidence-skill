@@ -53,6 +53,52 @@ test("requires a non-empty verification command name", () => {
   }
 });
 
+test("rejects malformed optional command metadata with field-specific diagnostics", () => {
+  const cases = [
+    { field: "durationMs", value: -1, message: /commands\[0\]\.durationMs.*non-negative finite number/ },
+    { field: "durationMs", value: Infinity, message: /commands\[0\]\.durationMs.*non-negative finite number/ },
+    { field: "durationMs", value: "10", message: /commands\[0\]\.durationMs.*non-negative finite number/ },
+    { field: "summary", value: {}, message: /commands\[0\]\.summary.*string/ },
+    { field: "stdoutTail", value: ["ok"], message: /commands\[0\]\.stdoutTail.*string/ },
+    { field: "stderrTail", value: null, message: /commands\[0\]\.stderrTail.*string/ }
+  ];
+
+  for (const { field, value, message } of cases) {
+    const evidence = {
+      commands: [{ command: "npm test", exitCode: 0, [field]: value }],
+      risks: ["none"]
+    };
+    assert.throws(() => normalizeEvidence(evidence), message, field);
+    assert.throws(() => checkEvidence(evidence), message, field);
+    assert.throws(() => renderMarkdown(evidence), message, field);
+  }
+});
+
+test("normalizes omitted command metadata and renders valid metadata deterministically", () => {
+  assert.deepEqual(normalizeEvidence({ commands: [{ command: "npm test", exitCode: 0 }] }).commands[0], {
+    command: "npm test",
+    exitCode: 0,
+    durationMs: null,
+    summary: "",
+    stdoutTail: "",
+    stderrTail: ""
+  });
+
+  const evidence = {
+    commands: [{
+      command: "npm test",
+      exitCode: 0,
+      durationMs: 12.5,
+      summary: "All tests passed.",
+      stdoutTail: "ok",
+      stderrTail: ""
+    }],
+    risks: ["none"]
+  };
+  assert.equal(renderMarkdown(evidence), renderMarkdown(evidence));
+  assert.match(renderMarkdown(evidence), /`npm test`: pass \(12\.5ms\) - All tests passed\./);
+});
+
 test("rejects unknown and empty evidence requirements", () => {
   const evidence = {
     commands: [{ command: "npm test", exitCode: 0 }],
@@ -192,6 +238,35 @@ test("CLI check and render reject the same malformed evidence", () => {
       assert.equal(result.stdout, "");
       assert.match(result.stderr, /Evidence field "summary" must be an array/);
       assert.doesNotMatch(result.stderr, /TypeError/);
+    }
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("CLI check and render reject malformed optional command metadata", () => {
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-command-metadata-"));
+  const cases = [
+    { field: "durationMs", value: -1, message: /commands\[0\]\.durationMs/ },
+    { field: "durationMs", value: "10", message: /commands\[0\]\.durationMs/ },
+    { field: "summary", value: {}, message: /commands\[0\]\.summary/ },
+    { field: "stdoutTail", value: 1, message: /commands\[0\]\.stdoutTail/ },
+    { field: "stderrTail", value: [], message: /commands\[0\]\.stderrTail/ }
+  ];
+
+  try {
+    for (const { field, value, message } of cases) {
+      const evidencePath = join(directory, `${field}-${typeof value}.json`);
+      writeFileSync(evidencePath, JSON.stringify({
+        commands: [{ command: "npm test", exitCode: 0, [field]: value }],
+        risks: ["none"]
+      }));
+      for (const command of ["check", "render"]) {
+        const result = runCli(command, evidencePath);
+        assert.equal(result.status, 1, `${command} ${field}: ${result.stdout || result.stderr}`);
+        assert.equal(result.stdout, "");
+        assert.match(result.stderr, message);
+      }
     }
   } finally {
     rmSync(directory, { recursive: true });

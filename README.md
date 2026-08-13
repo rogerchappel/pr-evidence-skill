@@ -7,7 +7,7 @@ Local-first PR evidence packs for agent-authored release-candidate pull requests
 ## Quickstart
 
 ```bash
-npm install
+npm ci
 npm test
 npm run smoke
 ```
@@ -123,6 +123,9 @@ npm run package:smoke
 npm run release:check
 ```
 
-Use `npm run release:check` before publishing or opening a release PR.
+Use Node.js 20, 22, or 24 and run `npm ci` followed by
+`npm run release:check` before publishing or opening a release PR. CI applies
+the same deterministic install and release gate to every supported Node.js
+release.
 `npm run package:smoke` verifies the dry-run tarball includes the CLI, source
 modules, fixtures, docs, policies, and executable bin metadata.

@@ -4,10 +4,11 @@ Thanks for helping improve `pr-evidence-skill`.
 
 ## Development
 
-Use Node.js 20 or newer.
+Use a supported Node.js release (20, 22, or 24). CI verifies every supported
+release against the committed lockfile.
 
 ```sh
-npm install
+npm ci
 npm run release:check
 ```
 

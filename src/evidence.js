@@ -21,7 +21,7 @@ export async function collectEvidence(options = {}) {
   if (!isPlainObject(notes)) {
     throw new Error('Evidence notes root must be a plain object');
   }
-  const git = await collectGitEvidence(options.cwd ?? process.cwd(), options.base ?? "HEAD~1");
+  const git = await collectGitEvidence(options.cwd ?? process.cwd(), options.base);
   return normalizeEvidence({
     schemaVersion: 1,
     collectedAt: new Date().toISOString(),

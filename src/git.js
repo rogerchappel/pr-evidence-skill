@@ -3,32 +3,63 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export async function collectGitEvidence(cwd = process.cwd(), base = "HEAD~1") {
+export async function collectGitEvidence(cwd = process.cwd(), base) {
   const branch = await git(["rev-parse", "--abbrev-ref", "HEAD"], cwd);
   const head = await git(["rev-parse", "HEAD"], cwd);
   const status = await git(["status", "--short"], cwd);
+  const defaultBase = base === undefined;
+  const requestedBase = base ?? "HEAD~1";
+  const rootComparison = defaultBase && !(await resolvesToCommit(requestedBase, cwd));
+
+  if (rootComparison) {
+    const commits = await git(["log", "--oneline", "HEAD"], cwd);
+    const changedFiles = await git(
+      ["diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "HEAD"],
+      cwd
+    );
+
+    return {
+      branch: branch.trim(),
+      head: head.trim(),
+      base: "empty tree (root commit)",
+      dirty: status.trim().length > 0,
+      status: lines(status),
+      commits: lines(commits),
+      changedFiles: lines(changedFiles)
+    };
+  }
+
   const resolvedBase = await git(
-    ["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`],
+    ["rev-parse", "--verify", "--end-of-options", `${requestedBase}^{commit}`],
     cwd,
-    `Cannot resolve base revision "${base}" to a commit`
+    `Cannot resolve base revision "${requestedBase}" to a commit`
   );
   const range = `${resolvedBase.trim()}..${head.trim()}`;
-  const commits = await git(["log", "--oneline", range], cwd, `Cannot compare commits from base "${base}"`);
+  const commits = await git(["log", "--oneline", range], cwd, `Cannot compare commits from base "${requestedBase}"`);
   const changedFiles = await git(
     ["diff", "--name-only", range],
     cwd,
-    `Cannot compare changed files from base "${base}"`
+    `Cannot compare changed files from base "${requestedBase}"`
   );
 
   return {
     branch: branch.trim(),
     head: head.trim(),
-    base,
+    base: requestedBase,
     dirty: status.trim().length > 0,
     status: lines(status),
     commits: lines(commits),
     changedFiles: lines(changedFiles)
   };
+}
+
+async function resolvesToCommit(revision, cwd) {
+  try {
+    await execFileAsync("git", ["rev-parse", "--verify", "--end-of-options", `${revision}^{commit}`], { cwd });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function git(args, cwd, context = `Git command failed: git ${args.join(" ")}`) {

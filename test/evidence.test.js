@@ -307,6 +307,40 @@ test("git collection rejects an invalid base with an actionable diagnostic", asy
   }
 });
 
+test("default git collection compares a root commit with the empty tree", async () => {
+  const repository = createGitRepository();
+  try {
+    const evidence = await collectGitEvidence(repository);
+
+    assert.equal(evidence.base, "empty tree (root commit)");
+    assert.match(evidence.commits[0], /initial commit/);
+    assert.deepEqual(evidence.changedFiles, ["first.txt"]);
+  } finally {
+    rmSync(repository, { recursive: true });
+  }
+});
+
+test("CLI collect succeeds by default in a one-commit repository", () => {
+  const repository = createGitRepository();
+  const outputPath = join(repository, "evidence.json");
+  try {
+    const result = runCli(
+      "collect",
+      "--commands", join(process.cwd(), "fixtures/commands-pass.json"),
+      "--cwd", repository,
+      "--out", outputPath
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const evidence = JSON.parse(readFileSync(outputPath, "utf8"));
+    assert.equal(evidence.git.base, "empty tree (root commit)");
+    assert.match(evidence.git.commits[0], /initial commit/);
+    assert.deepEqual(evidence.git.changedFiles, ["first.txt"]);
+  } finally {
+    rmSync(repository, { recursive: true });
+  }
+});
+
 test("git collection preserves valid empty and non-empty comparisons", async () => {
   const repository = createGitRepository();
   try {

@@ -102,6 +102,7 @@ Commands:
 
 Evidence requirements: verification, risks, summary
 Verification commands require a non-empty command string and integer exitCode (or legacy code).
+The default comparison base is HEAD~1; a root commit is compared with the empty tree.
 `);
 }
 

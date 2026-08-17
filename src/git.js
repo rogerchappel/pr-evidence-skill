@@ -12,6 +12,18 @@ export async function collectGitEvidence(cwd = process.cwd(), base) {
   const rootComparison = defaultBase && !(await resolvesToCommit(requestedBase, cwd));
 
   if (rootComparison) {
+    const shallow = (await git(
+      ["rev-parse", "--is-shallow-repository"],
+      cwd,
+      "Cannot determine whether repository history is shallow"
+    )).trim() === "true";
+
+    if (shallow) {
+      throw new Error(
+        "Cannot determine the default base from shallow history; fetch the parent history or pass --base with an available commit"
+      );
+    }
+
     const commits = await git(["log", "--oneline", "HEAD"], cwd);
     const changedFiles = await git(
       ["diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "HEAD"],

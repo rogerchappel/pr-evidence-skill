@@ -341,6 +341,35 @@ test("CLI collect succeeds by default in a one-commit repository", () => {
   }
 });
 
+test("CLI collect rejects a shallow tip whose parent history is unavailable", () => {
+  const source = createGitRepository();
+  const cloneParent = mkdtempSync(join(tmpdir(), "pr-evidence-shallow-"));
+  const shallow = join(cloneParent, "clone");
+  const outputPath = join(shallow, "evidence.json");
+  try {
+    writeFileSync(join(source, "second.txt"), "second\n");
+    runGit(source, "add", "second.txt");
+    runGit(source, "commit", "--quiet", "-m", "add second file");
+    runGit(cloneParent, "clone", "--quiet", "--depth", "1", `file://${source}`, shallow);
+
+    const result = runCli(
+      "collect",
+      "--commands", join(process.cwd(), "fixtures/commands-pass.json"),
+      "--cwd", shallow,
+      "--out", outputPath
+    );
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Cannot determine the default base from shallow history/);
+    assert.match(result.stderr, /fetch the parent history|--base/);
+    assert.throws(() => readFileSync(outputPath), /ENOENT/);
+  } finally {
+    rmSync(source, { recursive: true });
+    rmSync(cloneParent, { recursive: true });
+  }
+});
+
 test("git collection preserves valid empty and non-empty comparisons", async () => {
   const repository = createGitRepository();
   try {

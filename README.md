@@ -40,6 +40,11 @@ node src/cli.js collect \
   --out evidence.json
 ```
 
+The default base is `HEAD~1`. A genuine root commit is compared with the empty
+tree. In a shallow clone where the parent is unavailable, collection stops with
+an actionable error instead of reporting the tip as a root commit. Fetch enough
+history first, or pass `--base <available-commit>` explicitly.
+
 The CLI accepts the `collect`, `render`, and `check` commands shown by
 `--help`. Options require a value, `render --format` accepts only `markdown`
 or `json`, and unsupported commands or options exit nonzero with an error.

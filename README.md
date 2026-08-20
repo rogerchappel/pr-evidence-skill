@@ -102,10 +102,15 @@ Every command result must include a non-empty string `command` and an explicit
 `exitCode` as a finite integer. Use `0` for a successful command and a nonzero
 integer for a failed command. The legacy `code` field is also accepted, but
 missing, `null`, string, fractional, `NaN`, and infinite status values are
-rejected rather than treated as success. Optional `durationMs` must be a
+rejected rather than treated as success. `schemaVersion` defaults to and
+currently accepts only `1`. Optional `durationMs` must be a
 non-negative finite number. Optional `summary`, `stdoutTail`, and `stderrTail`
 must be strings. When omitted, duration normalizes to `null` and the string
-fields normalize to empty strings.
+fields normalize to empty strings. Normalized evidence can be normalized,
+checked, or rendered again without changing it. When present, `git` must be an
+object: `branch`, `head`, and `base` are strings or null, `dirty` is boolean,
+and `commits` and `changedFiles` are arrays of non-empty strings. Invalid fields
+produce their full evidence path in the error.
 
 ## Safety Notes
 

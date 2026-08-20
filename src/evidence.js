@@ -53,6 +53,32 @@ export function validateEvidence(evidence) {
     throw new Error("Evidence root must be a plain object");
   }
 
+  if (evidence.schemaVersion !== undefined && evidence.schemaVersion !== 1) {
+    throw new Error('Evidence field "schemaVersion" must be 1');
+  }
+  if (evidence.git !== undefined && !isPlainObject(evidence.git)) {
+    throw new Error('Evidence field "git" must be a plain object');
+  }
+  for (const field of ["branch", "head", "base"]) {
+    if (evidence.git?.[field] !== undefined && evidence.git[field] !== null
+      && typeof evidence.git[field] !== "string") {
+      throw new Error(`Evidence field "git.${field}" must be a string or null`);
+    }
+  }
+  if (evidence.git?.dirty !== undefined && typeof evidence.git.dirty !== "boolean") {
+    throw new Error('Evidence field "git.dirty" must be a boolean');
+  }
+  for (const field of ["commits", "changedFiles"]) {
+    if (evidence.git?.[field] !== undefined && !Array.isArray(evidence.git[field])) {
+      throw new Error(`Evidence field "git.${field}" must be an array`);
+    }
+    for (const [index, item] of (evidence.git?.[field] ?? []).entries()) {
+      if (typeof item !== "string" || item.trim().length === 0) {
+        throw new Error(`Evidence field "git.${field}[${index}]" must be a non-empty string`);
+      }
+    }
+  }
+
   for (const field of ["commands", "summary", "risks", "nextSteps", "packageContents"]) {
     if (evidence[field] !== undefined && !Array.isArray(evidence[field])) {
       throw new Error(`Evidence field "${field}" must be an array`);
@@ -70,13 +96,13 @@ export function validateEvidence(evidence) {
     if (!Number.isFinite(status) || !Number.isInteger(status)) {
       throw new Error(`Evidence field "commands[${index}]" must include an integer exitCode (or legacy code)`);
     }
-    if (Object.hasOwn(command, "durationMs")
+    if (Object.hasOwn(command, "durationMs") && command.durationMs !== null
       && (!Number.isFinite(command.durationMs) || command.durationMs < 0)) {
       throw new Error(`Evidence field "commands[${index}].durationMs" must be a non-negative finite number`);
     }
     for (const field of ["summary", "stdoutTail", "stderrTail"]) {
-      if (Object.hasOwn(command, field) && typeof command[field] !== "string") {
-        throw new Error(`Evidence field "commands[${index}].${field}" must be a string`);
+      if (Object.hasOwn(command, field) && command[field] !== null && typeof command[field] !== "string") {
+        throw new Error(`Evidence field "commands[${index}].${field}" must be a string or null`);
       }
     }
   }

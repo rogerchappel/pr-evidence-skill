@@ -60,7 +60,7 @@ test("rejects malformed optional command metadata with field-specific diagnostic
     { field: "durationMs", value: "10", message: /commands\[0\]\.durationMs.*non-negative finite number/ },
     { field: "summary", value: {}, message: /commands\[0\]\.summary.*string/ },
     { field: "stdoutTail", value: ["ok"], message: /commands\[0\]\.stdoutTail.*string/ },
-    { field: "stderrTail", value: null, message: /commands\[0\]\.stderrTail.*string/ }
+    { field: "stderrTail", value: 1, message: /commands\[0\]\.stderrTail.*string/ }
   ];
 
   for (const { field, value, message } of cases) {
@@ -97,6 +97,48 @@ test("normalizes omitted command metadata and renders valid metadata determinist
   };
   assert.equal(renderMarkdown(evidence), renderMarkdown(evidence));
   assert.match(renderMarkdown(evidence), /`npm test`: pass \(12\.5ms\) - All tests passed\./);
+  assert.deepEqual(normalizeEvidence(normalizeEvidence(evidence)), normalizeEvidence(evidence));
+  assert.doesNotThrow(() => renderMarkdown({ commands: [{ command: "npm test", exitCode: 0 }], risks: ["none"] }));
+});
+
+test("validates schema version and rendered git fields", () => {
+  const cases = [
+    { value: { schemaVersion: 2 }, message: /"schemaVersion" must be 1/ },
+    { value: { git: [] }, message: /"git" must be a plain object/ },
+    { value: { git: { commits: "abc" } }, message: /"git.commits" must be an array/ },
+    { value: { git: { commits: [null] } }, message: /"git.commits\[0\]" must be a non-empty string/ },
+    { value: { git: { changedFiles: {} } }, message: /"git.changedFiles" must be an array/ },
+    { value: { git: { dirty: "false" } }, message: /"git.dirty" must be a boolean/ },
+    { value: { git: { head: 42 } }, message: /"git.head" must be a string or null/ }
+  ];
+  for (const { value, message } of cases) {
+    assert.throws(() => normalizeEvidence(value), message);
+    assert.throws(() => checkEvidence(value), message);
+    assert.throws(() => renderMarkdown(value), message);
+  }
+});
+
+test("CLI check and render reject unsupported schemas and malformed git evidence", () => {
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-git-schema-"));
+  const cases = [
+    { name: "version", value: { schemaVersion: "wrong" }, message: /schemaVersion/ },
+    { name: "commits", value: { git: { commits: "abc" } }, message: /git.commits/ },
+    { name: "dirty", value: { git: { dirty: "false" } }, message: /git.dirty/ }
+  ];
+  try {
+    for (const { name, value, message } of cases) {
+      const evidencePath = join(directory, `${name}.json`);
+      writeFileSync(evidencePath, JSON.stringify(value));
+      for (const command of ["check", "render"]) {
+        const result = runCli(command, evidencePath);
+        assert.equal(result.status, 1, `${command}: ${result.stdout || result.stderr}`);
+        assert.match(result.stderr, message);
+        assert.doesNotMatch(result.stderr, /TypeError/);
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("rejects unknown and empty evidence requirements", () => {

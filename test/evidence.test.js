@@ -229,6 +229,29 @@ test("renders reviewer-facing markdown", async () => {
   assert.match(markdown, /PR Evidence Pack/);
   assert.match(markdown, /npm test/);
   assert.match(markdown, /Evidence Check/);
+  assert.match(markdown, /Status: pass/);
+  assert.match(markdown, /Required evidence is present/);
+});
+
+test("render requires a reviewer summary in the API and CLI", async () => {
+  const evidence = await readJson("fixtures/evidence-pass.json");
+  delete evidence.summary;
+
+  const markdown = renderMarkdown(evidence);
+  assert.match(markdown, /Status: needs attention/);
+  assert.match(markdown, /Missing reviewer summary/);
+
+  const directory = mkdtempSync(join(tmpdir(), "pr-evidence-render-summary-"));
+  const evidencePath = join(directory, "missing-summary.json");
+  try {
+    writeFileSync(evidencePath, JSON.stringify(evidence));
+    const result = runCli("render", evidencePath, "--format", "markdown");
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Status: needs attention/);
+    assert.match(result.stdout, /Missing reviewer summary/);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("CLI prints package version", () => {

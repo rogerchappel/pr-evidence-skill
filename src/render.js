@@ -2,7 +2,7 @@ import { checkEvidence, normalizeEvidence } from "./evidence.js";
 
 export function renderMarkdown(evidence) {
   const data = normalizeEvidence(evidence);
-  const check = checkEvidence(data);
+  const check = checkEvidence(data, ["verification", "risks", "summary"]);
   const lines = [
     "# PR Evidence Pack",
     "",

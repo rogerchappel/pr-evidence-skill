@@ -74,6 +74,42 @@ test("rejects malformed optional command metadata with field-specific diagnostic
   }
 });
 
+test("command output tails are preserved as metadata and only exit status determines verification", () => {
+  const successful = {
+    commands: [{
+      command: "npm test",
+      exitCode: 0,
+      stdoutTail: "secret-like captured output",
+      stderrTail: "warning captured on stderr"
+    }],
+    risks: ["none"]
+  };
+  const failed = {
+    commands: [{
+      command: "npm test",
+      exitCode: 2,
+      stdoutTail: "tests completed",
+      stderrTail: "failure detail"
+    }],
+    risks: ["none"]
+  };
+
+  assert.equal(checkEvidence(successful).ok, true);
+  assert.deepEqual(checkEvidence(failed).findings, ["One or more verification commands failed"]);
+
+  const rendered = renderMarkdown(successful);
+  assert.match(rendered, /`npm test`: pass/);
+  assert.doesNotMatch(rendered, /secret-like captured output|warning captured on stderr/);
+  assert.deepEqual(normalizeEvidence(successful).commands[0], {
+    command: "npm test",
+    exitCode: 0,
+    durationMs: null,
+    summary: "",
+    stdoutTail: "secret-like captured output",
+    stderrTail: "warning captured on stderr"
+  });
+});
+
 test("normalizes omitted command metadata and renders valid metadata deterministically", () => {
   assert.deepEqual(normalizeEvidence({ commands: [{ command: "npm test", exitCode: 0 }] }).commands[0], {
     command: "npm test",

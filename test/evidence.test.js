@@ -527,6 +527,18 @@ test("CLI rejects unknown options", () => {
   assert.match(result.stderr, /Unknown option for render: --bogus/);
 });
 
+test("CLI rejects repeated valued options", () => {
+  for (const [label, values] of [
+    ["format", ["render", "fixtures/evidence-pass.json", "--format", "json", "--format", "markdown"]],
+    ["out", ["render", "fixtures/evidence-pass.json", "--out", "first.md", "--out", "second.md"]]
+  ]) {
+    const result = runCli(...values);
+    assert.equal(result.status, 1, label);
+    assert.equal(result.stdout, "", label);
+    assert.match(result.stderr, new RegExp(`Duplicate option for render: --${label}`));
+  }
+});
+
 test("CLI rejects missing option values", () => {
   for (const values of [
     ["render", "fixtures/evidence-pass.json", "--format"],

@@ -63,6 +63,9 @@ function parseArgs(command, values) {
         if (!schema.options.includes(key)) {
           throw new Error(`Unknown option for ${command}: --${key}`);
         }
+        if (Object.hasOwn(args, key)) {
+          throw new Error(`Duplicate option for ${command}: --${key}`);
+        }
         if (values[index + 1] === undefined || values[index + 1].startsWith("--")) {
           throw new Error(`Missing value for --${key}`);
         }
